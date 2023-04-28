@@ -22,7 +22,7 @@ public class CasesController : ControllerBase
     public async Task<IActionResult> CreateCase([FromBody] CaseAdd addcase)
     {
         Case @case = new Case();
-        @case.Id = new Random().Next(1000, Int32.MaxValue - 2000000000);
+        @case.Id = new Random().Next(1000, Int32.MaxValue/10);
         @case.Username = addcase.Username;
         @case.Connection = addcase.Connection;
         @case.Message = addcase.Message;

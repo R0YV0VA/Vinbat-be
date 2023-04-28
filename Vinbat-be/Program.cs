@@ -127,7 +127,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
             if(item.Status)
                 requestMessage += $"Id: {item.Id}\nUsername: {item.Username}\nConnection type: {item.Connection}\nMessage: {item.Message}\nStatus: Done\n\n\n";
             else
-                requestMessage += $"Id: {item.Id}\nUsername: {item.Username}\nConnection type: {item.Connection}\nnMessage: {item.Message}\nStatus: Not done\n\n\n";
+                requestMessage += $"Id: {item.Id}\nUsername: {item.Username}\nConnection type: {item.Connection}\nMessage: {item.Message}\nStatus: Not done\n\n\n";
         }
         await botClient.SendTextMessageAsync(
             chatId: chatId,
