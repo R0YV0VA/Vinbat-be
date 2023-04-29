@@ -33,4 +33,15 @@ public class UsersController : ControllerBase
         myAccount.Status = user.Status;
         return Ok(myAccount);
     }
+
+    [Authorize]
+    [EnableCors]
+    [HttpGet("is-logged")]
+    public IActionResult IsLogged()
+    {
+        int? userId = Convert.ToInt32(this.User.FindFirstValue(ClaimTypes.Name));
+        if (userId == null)
+            return Unauthorized();
+        return Ok();
+    }
 }
