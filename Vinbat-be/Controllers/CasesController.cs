@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Vinbat_be.Contexts;
 using Vinbat_be.Models;
 
@@ -17,7 +16,7 @@ public class CasesController : ControllerBase
         this.casesContext = casesContext;
     }
     [AllowAnonymous]
-    [EnableCors]
+    [EnableCors("NonAuth")]
     [HttpPost]
     public async Task<IActionResult> CreateCase([FromBody] CaseAdd addcase)
     {

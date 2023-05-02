@@ -9,7 +9,7 @@ namespace Vinbat_be.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthorizeController : ControllerBase
+public class AuthorizeController : Controller
 {
     private readonly JwtAuthentificationManager jwtAuthentificationManager;
     private readonly UsersContext usersContext;
@@ -20,7 +20,7 @@ public class AuthorizeController : ControllerBase
         this.usersContext = usersContext;
     }
     [AllowAnonymous]
-    [EnableCors]
+    [EnableCors("NonAuth")]
     [HttpPost("login")]
     public async Task<IActionResult> SignIn([FromBody] LoginUser user)
     {
@@ -31,7 +31,7 @@ public class AuthorizeController : ControllerBase
     }
 
     [AllowAnonymous]
-    [EnableCors]
+    [EnableCors("NonAuth")]
     [HttpPost("register")]
     public async Task<IActionResult> SignUp([FromBody] RegisterUser signUpUser)
     {
@@ -41,13 +41,17 @@ public class AuthorizeController : ControllerBase
         user.Login = signUpUser.Login;
         user.Password = JwtAuthentificationManager.CreateMD5(signUpUser.Password);
         user.Status = 1;
+        //find users with the same login
+        var users = await usersContext.Users.Where(u => u.Login == user.Login).ToListAsync();
+        if (users.Count > 0)
+            return Conflict();
         await usersContext.Users.AddAsync(user);
         await usersContext.SaveChangesAsync();
         return Ok();
     }
 
     [AllowAnonymous]
-    [EnableCors]
+    [EnableCors("NonAuth")]
     [HttpPut("newpass")]
     public async Task<IActionResult> NewPass([FromBody] LoginUser newPassUser)
     {

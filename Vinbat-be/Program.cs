@@ -1,4 +1,4 @@
-using Vinbat_be;
+﻿using Vinbat_be;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,6 +10,8 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Vinbat_be.Telegram;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Authentication.Certificate;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -34,11 +36,21 @@ builder.Services.AddDbContext<CasesContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("NonAuth", policy =>
     {
         policy.AllowAnyOrigin()
                .AllowAnyMethod()
                .AllowAnyHeader();
+    });
+});
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AuthReq", policy =>
+    {
+        policy.WithOrigins("http://176.32.9.163:3000", "http://localhost:3000")
+               .AllowAnyMethod()
+               .AllowAnyHeader()
+                .AllowCredentials();
     });
 });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -63,6 +75,8 @@ builder.Services.AddAuthentication(x =>
     };
 });
 builder.Services.AddSingleton<JwtAuthentificationManager>(new JwtAuthentificationManager(key));
+builder.Services.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+    .AddCertificate();
 ///Add JWT authentication/
 
 var app = builder.Build();
@@ -74,7 +88,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+app.UseCors("NonAuth");
+
+app.UseCors("AuthReq");
 
 app.UseHttpsRedirection();
 
@@ -112,7 +128,6 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         return;
 
     var chatId = message.Chat.Id;
-    // Create casesContext using Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=Vinabat;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False
     CasesContext dbContext = new CasesContext(new DbContextOptionsBuilder<CasesContext>()
         .UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=Vinabat;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False")
         .Options);
@@ -134,7 +149,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
             text: requestMessage,
             cancellationToken: cancellationToken);
     }
-    if (messageText.Contains("/CloseOpen:"))
+    else if (messageText.Contains("/CloseOpen:"))
     {
         if(messageText.Substring(11).Length >= Convert.ToString(Int32.MaxValue).Length)
         {
@@ -166,7 +181,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                   cancellationToken: cancellationToken);
         }
     }
-    if (messageText.Contains("/GetCase:"))
+    else if (messageText.Contains("/GetCase:"))
     {
         if (messageText.Substring(9).Length >= Convert.ToString(Int32.MaxValue).Length)
         {
@@ -197,6 +212,13 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                   text: requesMessage,
                   cancellationToken: cancellationToken);
         }
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(
+                       chatId: chatId,
+                       text: "Введіть ",
+                       cancellationToken: cancellationToken);
     }
 }
 
