@@ -13,9 +13,11 @@ namespace Vinbat_be.Controllers;
 public class UsersController : Controller
 {
     private readonly UsersContext usersContext;
-    public UsersController(UsersContext _usersContext)
+    private readonly JwtAuthentificationManager jwtAuthentificationManager;
+    public UsersController(UsersContext _usersContext, JwtAuthentificationManager _jwtAuthentificationManager)
     {
         this.usersContext = _usersContext;
+        this.jwtAuthentificationManager = _jwtAuthentificationManager;
     }
 
     [Authorize]
@@ -48,16 +50,24 @@ public class UsersController : Controller
     [Authorize]
     [EnableCors("AuthReq")]
     [HttpPut("change-login-name")]
-    public async Task<IActionResult> ChangeLoginName([FromBody] LoginName LoginName)
+    public async Task<IActionResult> ChangeLoginName([FromBody] LoginName? loginName)
     {
         int? userId = Convert.ToInt32(this.User.FindFirstValue(ClaimTypes.Name));
         var user = await usersContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return NotFound();
-        if (LoginName != null)
-            user.Name = LoginName.Name;
-        if (LoginName != null)
-            user.Login = LoginName.Login;
+        if (loginName.Name == "" && loginName.Login == "")
+            return Unauthorized("Введіть нові дані!");
+        if (loginName.Name != "")
+        {
+            user.Name = loginName.Name;
+        }
+        if (loginName.Login != "")
+        {
+            user.Login = loginName.Login;
+            await usersContext.SaveChangesAsync();
+            return Ok();
+        }
         await usersContext.SaveChangesAsync();
         return Ok();
     }
@@ -71,14 +81,15 @@ public class UsersController : Controller
         var user = await usersContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return NotFound();
-        if (newPass.Password != null)
-            if(user.Password == JwtAuthentificationManager.CreateMD5(newPass.Password))
+        if (newPass.OldPassword != "")
+            if(user.Password == JwtAuthentificationManager.CreateMD5(newPass.OldPassword))
                 user.Password = JwtAuthentificationManager.CreateMD5(newPass.NewPassword);
             else
-                return Unauthorized("Паролі не співпадають!");
+                return BadRequest("Паролі не співпадають!");
         else
             return Unauthorized("Введіть пароль!");
         await usersContext.SaveChangesAsync();
-        return Ok();
+        var token = await jwtAuthentificationManager.Authenticate(user.Login, newPass.NewPassword, usersContext);
+        return Ok(token);
     }
 }
