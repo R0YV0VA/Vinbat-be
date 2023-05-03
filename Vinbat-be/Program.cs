@@ -10,20 +10,20 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Vinbat_be.Telegram;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Authentication.Certificate;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
 
-var botClient = new TelegramBotClient("6021365111:AAFGpLocQpOiQHKCWGrIiNME79dUOkZqAVk");
-Thread thread = new(async () => await StartBot());
-thread.Start();
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add connection to builder from secret.json
 builder.Configuration.AddJsonFile("secret.json", optional: true, reloadOnChange: true);
+
+// Add Telegram bot
+var botClient = new TelegramBotClient(builder.Configuration["TelegramAPI"]);
+Thread thread = new(async () => await StartBot());
+thread.Start();
 
 // Add connection to db from secret.json
 builder.Services.AddDbContext<UsersContext>(options =>
@@ -47,7 +47,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AuthReq", policy =>
     {
-        policy.WithOrigins("http://176.32.9.163:3000", "http://localhost:3000")
+        //get string from secret.json
+        policy.WithOrigins(builder.Configuration["AllowedOrigin"], "http://localhost:3000/")
                .AllowAnyMethod()
                .AllowAnyHeader()
                 .AllowCredentials();
@@ -57,7 +58,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 /// Add JWT authentication
-var key = "zxcvbnm123321mnbvcxz";
+var key = builder.Configuration["JWTKey"];
 builder.Services.AddAuthentication(x =>
 {
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
