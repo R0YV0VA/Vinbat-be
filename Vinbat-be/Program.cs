@@ -9,8 +9,9 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
-using Vinbat_be.Telegram;
+using Vinbat_be.Services;
 using Microsoft.AspNetCore.Authentication.Certificate;
+using Microsoft.AspNetCore.Identity.UI.Services;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -30,6 +31,8 @@ builder.Services.AddDbContext<UsersContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
 builder.Services.AddDbContext<CasesContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
+builder.Services.AddDbContext<ConfirmUsersContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
 
 // Add services to the container.
 
@@ -48,12 +51,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AuthReq", policy =>
     {
         //get string from secret.json
-        policy.WithOrigins(builder.Configuration["AllowedOrigin"], "http://localhost:3000/")
+        policy.WithOrigins(builder.Configuration["AllowedOrigin"] + ":3000", "http://localhost:3000/")
                .AllowAnyMethod()
                .AllowAnyHeader()
                 .AllowCredentials();
     });
 });
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -134,7 +138,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         .Options);
     DataBaseTG dataBaseTG = new DataBaseTG(dbContext);
 
-    if (messageText == "/GetAll")
+    if (messageText == "/getall")
     {
         var cases = await dataBaseTG.GetAllCases();
         string requestMessage = "";
@@ -150,7 +154,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
             text: requestMessage,
             cancellationToken: cancellationToken);
     }
-    else if (messageText.Contains("/CloseOpen:"))
+    else if (messageText.Contains("/closeopen:"))
     {
         if(messageText.Substring(11).Length >= Convert.ToString(Int32.MaxValue).Length)
         {
@@ -182,7 +186,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                   cancellationToken: cancellationToken);
         }
     }
-    else if (messageText.Contains("/GetCase:"))
+    else if (messageText.Contains("/getcase:"))
     {
         if (messageText.Substring(9).Length >= Convert.ToString(Int32.MaxValue).Length)
         {

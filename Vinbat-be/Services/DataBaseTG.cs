@@ -2,7 +2,7 @@
 using Vinbat_be.Contexts;
 using Vinbat_be.Models;
 
-namespace Vinbat_be.Telegram;
+namespace Vinbat_be.Services;
 
 public class DataBaseTG
 {
