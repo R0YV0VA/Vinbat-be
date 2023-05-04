@@ -16,16 +16,18 @@ public class AuthorizeController : Controller
     private readonly JwtAuthentificationManager jwtAuthentificationManager;
     private readonly UsersContext usersContext;
     private readonly ConfirmUsersContext confirmUsersContext;
+    private readonly ResetPasswordContext resetPasswordContext;
     private readonly EmailService emailService;
     private readonly string Link;
 
-    public AuthorizeController(JwtAuthentificationManager jwtAuthentificationManager, UsersContext usersContext, ConfirmUsersContext confirmUsersContext, IConfiguration configuration)
+    public AuthorizeController(JwtAuthentificationManager jwtAuthentificationManager, UsersContext usersContext, ConfirmUsersContext confirmUsersContext, IConfiguration configuration, ResetPasswordContext resetPasswordContext)
     {
         this.jwtAuthentificationManager = jwtAuthentificationManager;
         this.usersContext = usersContext;
         this.confirmUsersContext = confirmUsersContext;
         emailService = new EmailService(configuration["EmailAdress"], configuration["EmailPassword"]);
         Link = configuration["AllowedOrigin"];
+        this.resetPasswordContext = resetPasswordContext;
     }
     [AllowAnonymous]
     [EnableCors("NonAuth")]
@@ -79,7 +81,7 @@ public class AuthorizeController : Controller
         user.Name = confirmUsers.Name; 
         user.Login = confirmUsers.Login;
         user.Password = confirmUsers.Password;
-        user.Status = 1;
+        user.Status = 0;
         await usersContext.Users.AddAsync(user);
         confirmUsersContext.ConfirmUsers.Remove(confirmUsers);
         await confirmUsersContext.SaveChangesAsync();
@@ -97,11 +99,56 @@ public class AuthorizeController : Controller
     [HttpPut("newpass")]
     public async Task<IActionResult> NewPass([FromBody] LoginUser newPassUser)
     {
-        User user = await usersContext.Users.FirstOrDefaultAsync(u => u.Login == newPassUser.Login);
+        var user = await usersContext.Users.FirstOrDefaultAsync(u => u.Login == newPassUser.Login);
         if (user == null)
             return NotFound();
-        user.Password = JwtAuthentificationManager.CreateMD5(newPassUser.Password);
-        await usersContext.SaveChangesAsync();
+        var oldRequest = await resetPasswordContext.ResetPassword.FirstOrDefaultAsync(r => r.UserId == user.Id);
+        if (oldRequest == null)
+        {
+            var newResetPassword = new ResetPassword();
+            newResetPassword.Id = new Random().Next(1000, Int32.MaxValue);
+            newResetPassword.UserId = user.Id;
+            newResetPassword.Password = JwtAuthentificationManager.CreateMD5(newPassUser.Password);
+            newResetPassword.GUID = Guid.NewGuid().ToString();
+            await emailService.Send(newPassUser.Login, "Підтвердження зміни паролю", $"Для підтвердження зміни паролю перейдіть по даному посиланню: {Link}:7224/auth/reset-password?token={newResetPassword.GUID}\nВаш новий пароль: {newPassUser.Password}\n\nНе показуйте це повідомлення нікому.");
+            await resetPasswordContext.ResetPassword.AddAsync(newResetPassword);
+            await resetPasswordContext.SaveChangesAsync();
+        }
+        else
+        {
+            oldRequest.Password = JwtAuthentificationManager.CreateMD5(newPassUser.Password);
+            oldRequest.GUID = Guid.NewGuid().ToString();
+            await emailService.Send(newPassUser.Login, "Підтвердження зміни паролю", $"Для підтвердження зміни паролю перейдіть по даному посиланню: {Link}:7224/auth/reset-password?token={oldRequest.GUID}\nВаш новий пароль: {newPassUser.Password}\n\nНе показуйте це повідомлення нікому.");
+            await resetPasswordContext.SaveChangesAsync();
+        }
         return Ok();
+    }
+
+    [AllowAnonymous]
+    [EnableCors("NonAuth")]
+    [HttpGet("reset-password")]
+    public async Task<ContentResult> ResetPassword([FromQuery] string token)
+    {
+        var request = await resetPasswordContext.ResetPassword.FirstOrDefaultAsync(r => r.GUID == token);
+        if (request == null)
+        {
+            return new ContentResult
+            {
+                ContentType = "text/html",
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Content = "<html><div style=\"align-items: center; justify-content: center; height: 100%; width: 100%;\"><div style=\"background-color: #ff3c3c; border-radius: 5px; box-shadow: 0 0 10px #b00000; align-items: center; justify-content: center; padding: 70px; text-align: center;\"><h1 style=\"font-size: 50px; font-weight: 600; color: #fff;\">400. Bad request</h1></div></div></html>"
+            };
+        }
+        var user = await usersContext.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+        user.Password = request.Password;
+        resetPasswordContext.ResetPassword.Remove(request);
+        await resetPasswordContext.SaveChangesAsync();
+        await usersContext.SaveChangesAsync();
+        return new ContentResult
+        {
+            ContentType = "text/html",
+            StatusCode = (int)HttpStatusCode.OK,
+            Content = "<html><div style=\"align-items: center; justify-content: center; height: 100%; width: 100%;\"><div style=\"background-color: #ff3c3c; border-radius: 5px; box-shadow: 0 0 10px #b00000; align-items: center; justify-content: center; padding: 70px; text-align: center;\"><h1 style=\"font-size: 50px; font-weight: 600; color: #fff;\">Password changed</h1><p style=\"font-size: 20px; font-weight: 300; color: #fff;\">You can close this page</p></div></div></html>"
+        };
     }
 }

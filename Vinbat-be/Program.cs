@@ -33,6 +33,8 @@ builder.Services.AddDbContext<CasesContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
 builder.Services.AddDbContext<ConfirmUsersContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
+builder.Services.AddDbContext<ResetPasswordContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
 
 // Add services to the container.
 
