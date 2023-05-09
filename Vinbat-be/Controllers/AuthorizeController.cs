@@ -151,4 +151,23 @@ public class AuthorizeController : Controller
             Content = "<html><div style=\"align-items: center; justify-content: center; height: 100%; width: 100%;\"><div style=\"background-color: #ff3c3c; border-radius: 5px; box-shadow: 0 0 10px #b00000; align-items: center; justify-content: center; padding: 70px; text-align: center;\"><h1 style=\"font-size: 50px; font-weight: 600; color: #fff;\">Password changed</h1><p style=\"font-size: 20px; font-weight: 300; color: #fff;\">You can close this page</p></div></div></html>"
         };
     }
+
+    [AllowAnonymous]
+    [EnableCors("NonAuth")]
+    [HttpPost("image-test")]
+    public async Task<IActionResult> ImageTest([FromForm] TestImage testImage)
+    {
+        var path = Path.Combine(Directory.GetCurrentDirectory(), "Images", Guid.NewGuid().ToString() + ".png");
+        using (var stream = new FileStream(path, FileMode.Create))
+        {
+            await testImage.Image.CopyToAsync(stream);
+        }
+        return Ok(testImage.Text);
+    }
+}
+
+public class TestImage
+{
+    public IFormFile Image { get; set; }
+    public string Text { get; set; }
 }

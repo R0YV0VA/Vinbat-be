@@ -8,7 +8,7 @@ namespace Vinbat_be.Controllers;
 
 [ApiController]
 [Route("cases")]
-public class CasesController : ControllerBase
+public class CasesController : Controller
 {
     private readonly CasesContext casesContext;
     public CasesController(CasesContext casesContext)

@@ -11,10 +11,14 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Vinbat_be.Services;
 using Microsoft.AspNetCore.Authentication.Certificate;
-using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.Extensions.FileProviders;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
+
+//check if Images/ folder exists, if not - create it
+if (!Directory.Exists("Images"))
+    Directory.CreateDirectory("Images");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,9 +39,12 @@ builder.Services.AddDbContext<ConfirmUsersContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
 builder.Services.AddDbContext<ResetPasswordContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
+builder.Services.AddDbContext<BatteriesContext>(options => 
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
+builder.Services.AddDbContext<TiresContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Debug")));
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
@@ -94,6 +101,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseStaticFiles(new StaticFileOptions()
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), @"Images")),
+    RequestPath = new PathString("/images")
+});
 
 app.UseCors("NonAuth");
 
